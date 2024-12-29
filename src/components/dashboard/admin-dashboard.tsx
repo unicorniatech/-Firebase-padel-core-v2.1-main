@@ -37,6 +37,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { createUsuario } from '@/lib/api';
+
 
 interface PendingApproval {
   id: string;
@@ -75,7 +77,48 @@ export function AdminDashboard() {
       timestamp: '10:15 AM',
     },
   ]);
-
+  // Estado para manejar los datos del formulario de "Registrar Jugador"
+  const [playerData, setPlayerData] = useState({
+    nombre_completo: '',
+    email: '',
+    rating_inicial: '',
+    club: '',
+  });
+  // Función para manejar cambios en los inputs del formulario
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPlayerData({ ...playerData, [name]: value });
+  };
+    // Función para registrar un nuevo jugador
+    const handleRegisterPlayer = async () => {
+      try {
+        const jugador = {
+          ...playerData,
+          rating_inicial: parseFloat(playerData.rating_inicial), // Convierte el rating a número
+        };
+        const response = await createUsuario(jugador); // Envía los datos al backend
+        console.log('Jugador registrado:', response);
+        toast({
+          title: 'Jugador registrado con éxito',
+          description: 'El jugador ha sido agregado correctamente.',
+        });
+        // Limpia el formulario
+        setPlayerData({
+          nombre_completo: '',
+          email: '',
+          rating_inicial: '',
+          club: '',
+        });
+      } catch (error) {
+        console.error('Error al registrar jugador:', error);
+        toast({
+          title: 'Error al registrar jugador',
+          description: 'Hubo un problema al registrar al jugador. Intenta nuevamente.',
+          variant: 'destructive',
+        });
+      }
+    };
+  
   const handleApproval = (id: string, approved: boolean) => {
     setPendingApprovals(prev => 
       prev.map(item => 
@@ -182,22 +225,46 @@ export function AdminDashboard() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Nombre Completo</Label>
-                      <Input placeholder="Ej: Carlos Ramírez" />
+                       <Input
+                          name="nombre_completo"
+                          value={playerData.nombre_completo}
+                          onChange={handleChange}
+                          placeholder="Ej: Carlos Ramírez"
+                        />
                     </div>
                     <div className="space-y-2">
                       <Label>Email</Label>
-                      <Input type="email" placeholder="ejemplo@correo.com" />
+                      <Input
+                        name="email"
+                        type="email"
+                        value={playerData.email}
+                        onChange={handleChange}
+                        placeholder="ejemplo@correo.com"
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Rating Inicial</Label>
-                      <Input type="number" placeholder="1000" />
+                      <Input
+                        name="rating_inicial"
+                        type="number"
+                        value={playerData.rating_inicial}
+                        onChange={handleChange}
+                        placeholder="1000"
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Club</Label>
-                      <Input placeholder="Ej: Club de Padel Cuernavaca" />
+                      <Input
+                        name="club"
+                        value={playerData.club}
+                        onChange={handleChange}
+                        placeholder="Ej: Club de Padel Cuernavaca"
+                      />
                     </div>
                   </div>
-                  <Button className="w-full">Registrar Jugador</Button>
+                  <Button className="w-full" onClick={handleRegisterPlayer}>
+                    Registrar Jugador
+                  </Button>
                 </TabsContent>
               </Tabs>
             </DialogContent>
