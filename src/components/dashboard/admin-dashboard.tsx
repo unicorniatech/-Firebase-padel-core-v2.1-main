@@ -91,6 +91,7 @@ export function AdminDashboard() {
     fecha_inicio: '',
     fecha_fin: '',
     premio_dinero: '',
+    etiquetas: '',
 });
 
   // Función para manejar cambios en los inputs del formulario (jugador)
@@ -287,6 +288,17 @@ export function AdminDashboard() {
         value={torneoData.premio_dinero}
         onChange={handleTorneoChange}
         placeholder="Ej: 500000"
+      />
+    </div>
+    </div>
+    <div className="space-y-2">
+      <Label>Etiquetas</Label>
+      <Input
+        name="etiquetas"
+        type="string"
+        value={torneoData.etiquetas}
+        onChange={handleTorneoChange}
+        placeholder="Ej: amateur, mixto, Open"
       />
     </div>
   </div>
