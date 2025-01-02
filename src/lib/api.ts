@@ -11,6 +11,12 @@ export const fetchUsuarios = async () => {
     return response.data;
 };
 
+// Función para obtener todos los torneos
+export const fetchTorneos = async () => {
+    const response = await API.get('/torneos/');
+    return response.data;
+};
+
 // Función para crear un nuevo usuario
 export const createUsuario = async (usuario: {
     nombre_completo: string;
@@ -19,5 +25,16 @@ export const createUsuario = async (usuario: {
     club?: string | null;
 }) => {
     const response = await API.post('/usuarios/', usuario);
+    return response.data;
+};
+
+export const createTorneo = async (torneo: {
+    nombre: string;
+    sede: string;
+    fecha_inicio: string;
+    fecha_fin: string;
+    premio_dinero: number;
+}) => {
+    const response = await API.post('/torneos/', torneo);
     return response.data;
 };

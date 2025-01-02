@@ -37,7 +37,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { createUsuario } from '@/lib/api';
+import { createUsuario, createTorneo } from '@/lib/api';
 
 
 interface PendingApproval {
@@ -84,11 +84,26 @@ export function AdminDashboard() {
     rating_inicial: '',
     club: '',
   });
-  // Función para manejar cambios en los inputs del formulario
+  // Estado para manejar los datos del formulario de "Registrar Torneo"
+  const [torneoData, setTorneoData] = useState({
+    nombre: '',
+    sede: '',
+    fecha_inicio: '',
+    fecha_fin: '',
+    premio_dinero: '',
+});
+
+  // Función para manejar cambios en los inputs del formulario (jugador)
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setPlayerData({ ...playerData, [name]: value });
   };
+  // Función para manejar los cambios de los torneos
+  const handleTorneoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setTorneoData({ ...torneoData, [name]: value });
+};
+
     // Función para registrar un nuevo jugador
     const handleRegisterPlayer = async () => {
       try {
@@ -118,6 +133,36 @@ export function AdminDashboard() {
         });
       }
     };
+    const handleRegisterTorneo = async () => {
+      try {
+        const torneo = {
+             ...torneoData,
+             premio_dinero: parseFloat(torneoData.premio_dinero), // Convertir el premio a número
+         };
+         const response = await createTorneo(torneo); // Llamar a la API
+         console.log('Torneo registrado:', response);
+         toast({
+             title: 'Torneo registrado con éxito',
+             description: 'El torneo ha sido agregado correctamente.',
+         });
+         // Limpiar el formulario
+         setTorneoData({
+             nombre: '',
+             sede: '',
+             fecha_inicio: '',
+             fecha_fin: '',
+             premio_dinero: '',
+         });
+      } catch (error) {
+          console.error('Error al registrar torneo:', error);
+          toast({
+              title: 'Error al registrar torneo',
+              description: 'Hubo un problema al registrar el torneo. Intenta nuevamente.',
+              variant: 'destructive',
+          });
+      }
+  };
+  
   
   const handleApproval = (id: string, approved: boolean) => {
     setPendingApprovals(prev => 
@@ -197,30 +242,58 @@ export function AdminDashboard() {
                   <Button className="w-full">Guardar Partido</Button>
                 </TabsContent>
                 <TabsContent value="tournament" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Nombre del Torneo</Label>
-                      <Input placeholder="Ej: Torneo Nacional 2024" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Sede</Label>
-                      <Input placeholder="Ej: Club de Padel Cuernavaca" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Fecha Inicio</Label>
-                      <Input type="date" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Fecha Fin</Label>
-                      <Input type="date" />
-                    </div>
-                    <div className="space-y-2 col-span-2">
-                      <Label>Premio</Label>
-                      <Input placeholder="Ej: $500,000" />
-                    </div>
-                  </div>
-                  <Button className="w-full">Crear Torneo</Button>
-                </TabsContent>
+                <div className="grid grid-cols-2 gap-4">
+    <div className="space-y-2">
+      <Label>Nombre del Torneo</Label>
+      <Input
+        name="nombre"
+        value={torneoData.nombre}
+        onChange={handleTorneoChange}
+        placeholder="Ej: Torneo Nacional 2024"
+      />
+    </div>
+    <div className="space-y-2">
+      <Label>Sede</Label>
+      <Input
+        name="sede"
+        value={torneoData.sede}
+        onChange={handleTorneoChange}
+        placeholder="Ej: Club de Padel Cuernavaca"
+      />
+    </div>
+    <div className="space-y-2">
+      <Label>Fecha Inicio</Label>
+      <Input
+        name="fecha_inicio"
+        type="date"
+        value={torneoData.fecha_inicio}
+        onChange={handleTorneoChange}
+      />
+    </div>
+    <div className="space-y-2">
+      <Label>Fecha Fin</Label>
+      <Input
+        name="fecha_fin"
+        type="date"
+        value={torneoData.fecha_fin}
+        onChange={handleTorneoChange}
+      />
+    </div>
+    <div className="space-y-2">
+      <Label>Premio en Dinero</Label>
+      <Input
+        name="premio_dinero"
+        type="number"
+        value={torneoData.premio_dinero}
+        onChange={handleTorneoChange}
+        placeholder="Ej: 500000"
+      />
+    </div>
+  </div>
+  <Button className="w-full" onClick={handleRegisterTorneo}>
+    Registrar Torneo
+  </Button>
+</TabsContent>
                 <TabsContent value="player" className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
