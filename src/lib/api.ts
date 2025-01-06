@@ -21,8 +21,8 @@ export const fetchTorneos = async () => {
 export const createUsuario = async (usuario: {
     nombre_completo: string;
     email: string;
-    rating_inicial: number;
-    club?: string | null;
+    rating_inicial?: number;
+    club?: string | null; // El ? es para que sea opcional
 }) => {
     const response = await API.post('/usuarios/', usuario);
     return response.data;
@@ -34,7 +34,21 @@ export const createTorneo = async (torneo: {
     fecha_inicio: string;
     fecha_fin: string;
     premio_dinero: number;
+    puntos: number;
+    imagen_url: string;
+    tags: string[];
 }) => {
     const response = await API.post('/torneos/', torneo);
     return response.data;
 };
+export const createPartido = async (partido: {
+    equipo_1: string;
+    equipo_2: string;
+    fecha_hora: string;
+    resultado?: string;
+    torneo: string; // ID del torneo
+}) => {
+    const response = await API.post('/partidos/', partido);
+    return response.data;
+};
+

@@ -37,7 +37,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { createUsuario, createTorneo } from '@/lib/api';
+import { createUsuario, createTorneo,createPartido } from '@/lib/api';
 
 
 interface PendingApproval {
@@ -91,7 +91,19 @@ export function AdminDashboard() {
     fecha_inicio: '',
     fecha_fin: '',
     premio_dinero: '',
+    puntos:'',
+    imagen_url:'',
+    tags: [''],
 });
+const [partidoData, setPartidoData] = useState({
+  equipo_1: '',
+  equipo_2: '',
+  fecha: '',
+  hora: '',
+  resultado: '',
+  torneo: '', // ID del torneo seleccionado
+});
+
 
   // Función para manejar cambios en los inputs del formulario (jugador)
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,6 +115,11 @@ export function AdminDashboard() {
     const { name, value } = e.target;
     setTorneoData({ ...torneoData, [name]: value });
 };
+  const handleMatchChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setPartidoData({ ...partidoData, [name]: value });
+  };
+
 
     // Función para registrar un nuevo jugador
     const handleRegisterPlayer = async () => {
@@ -135,9 +152,20 @@ export function AdminDashboard() {
     };
     const handleRegisterTorneo = async () => {
       try {
+        //Para validar que una URL sea válida
+        const urlRegex =/^(https?:\/\/)?([\w.-]+)+(:\d+)?(\/([\w/._-]*)?)?$/;
+        if (!urlRegex.test(torneoData.imagen_url)) {
+            toast({
+                title: 'Error en la URL',
+                description: 'Proporciona una URL válida para la imagen.',
+                variant: 'destructive',
+            });
+            return;
+        }
         const torneo = {
              ...torneoData,
              premio_dinero: parseFloat(torneoData.premio_dinero), // Convertir el premio a número
+             puntos: parseInt(torneoData.puntos, 10),
          };
          const response = await createTorneo(torneo); // Llamar a la API
          console.log('Torneo registrado:', response);
@@ -152,6 +180,9 @@ export function AdminDashboard() {
              fecha_inicio: '',
              fecha_fin: '',
              premio_dinero: '',
+             puntos: '',
+             imagen_url: '',
+             tags: [''],
          });
       } catch (error) {
           console.error('Error al registrar torneo:', error);
@@ -159,9 +190,10 @@ export function AdminDashboard() {
               title: 'Error al registrar torneo',
               description: 'Hubo un problema al registrar el torneo. Intenta nuevamente.',
               variant: 'destructive',
-          });
+        });
       }
-  };
+    };
+    
   
   
   const handleApproval = (id: string, approved: boolean) => {
@@ -289,6 +321,29 @@ export function AdminDashboard() {
         placeholder="Ej: 500000"
       />
     </div>
+    {/* Puntos */}
+    <div className="space-y-2">
+      <Label>Puntos para Ranking</Label>
+      <Input
+        name="puntos"
+        type="number"
+        value={torneoData.puntos}
+        onChange={(e) => setTorneoData({ ...torneoData, puntos: e.target.value })}
+        placeholder="Ej: 250"
+      />
+    </div>
+    {/* URL de Imagen */}
+    <div className="space-y-2">
+      <Label>URL de Imagen</Label>
+      <Input
+        name="imagen_url"
+        type="url"
+        value={torneoData.imagen_url}
+        onChange={(e) => setTorneoData({ ...torneoData, imagen_url: e.target.value })}
+        placeholder="Ej: https://example.com/imagen.jpg"
+      />
+    </div>
+   
   </div>
   <Button className="w-full" onClick={handleRegisterTorneo}>
     Registrar Torneo
