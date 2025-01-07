@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -37,7 +37,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { createUsuario, createTorneo,createPartido } from '@/lib/api';
+import { createUsuario, createTorneo,createPartido,fetchTorneos } from '@/lib/api';
 
 
 interface PendingApproval {
@@ -48,6 +48,12 @@ interface PendingApproval {
   status: 'pending' | 'approved' | 'rejected';
   timestamp: string;
 }
+// Define la interfaz para describir los datos de un torneo
+interface Torneo {
+  id: string; // Cambia a 'number' si el backend usa IDs numéricos
+  nombre: string; // El nombre del torneo
+}
+
 
 export function AdminDashboard() {
   const { toast } = useToast();
@@ -95,6 +101,7 @@ export function AdminDashboard() {
     imagen_url:'',
     tags: [''],
 });
+ // Estado para manejar los datos del formulario de "Registrar Partido"
 const [partidoData, setPartidoData] = useState({
   equipo_1: '',
   equipo_2: '',
@@ -103,6 +110,21 @@ const [partidoData, setPartidoData] = useState({
   resultado: '',
   torneo: '', // ID del torneo seleccionado
 });
+// Estado para manejar la lista de torneos
+const [torneos, setTorneos] = useState<Torneo[]>([]); // Estado para manejar la lista de torneos
+//useEffect para cargar los torneos al montar el componente
+useEffect(() => {
+  const loadTorneos = async () => {
+      try {
+          const data = await fetchTorneos(); // Llama a la API para obtener los torneos
+          setTorneos(data); // Actualiza el estado con la lista de torneos
+      } catch (error) {
+          console.error('Error al cargar torneos:', error);
+      }
+  };
+  loadTorneos();
+}, []); // Solo se ejecuta una vez al montar el componente
+
 
 
   // Función para manejar cambios en los inputs del formulario (jugador)
@@ -150,6 +172,7 @@ const [partidoData, setPartidoData] = useState({
         });
       }
     };
+    //Función para registrar nuevo torneo
     const handleRegisterTorneo = async () => {
       try {
         //Para validar que una URL sea válida
@@ -193,7 +216,41 @@ const [partidoData, setPartidoData] = useState({
         });
       }
     };
-    
+    //Función para registrar nuevo Partido
+    const handleRegisterMatch = async () => {
+      try {
+        const partido = {
+            ...partidoData,
+            fecha_hora: `${partidoData.fecha}T${partidoData.hora}`, // Combina fecha y hora
+        };
+        console.log('Datos enviados al backend:', partido);
+
+        const response = await createPartido(partido); // Función para llamar a la API
+        console.log('Partido registrado:', response);
+
+        toast({
+            title: 'Partido registrado con éxito',
+            description: 'El partido ha sido agregado correctamente.',
+        });
+
+        // Limpiar el formulario
+        setPartidoData({
+            equipo_1: '',
+            equipo_2: '',
+            fecha: '',
+            hora: '',
+            resultado: '',
+            torneo: '',
+        });
+    } catch (error) {
+        //console.error('Error al registrar partido:', error.response?.data || error);
+        toast({
+            title: 'Error al registrar partido',
+            description: 'Hubo un problema al registrar el partido. Intenta nuevamente.',
+            variant: 'destructive',
+        });
+      }
+    };
   
   
   const handleApproval = (id: string, approved: boolean) => {
@@ -254,24 +311,77 @@ const [partidoData, setPartidoData] = useState({
                 </TabsList>
                 <TabsContent value="match" className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
+                    {/* Selección del Torneo */}
+                    <div className="space-y-2">
+                      <Label>Torneo</Label>
+                      <select
+                        name="torneo"
+                        value={partidoData.torneo}
+                        onChange={handleMatchChange}
+                        className="border rounded px-3 py-2 w-full"
+                      >
+                        <option value="">Selecciona un Torneo</option>
+                        {torneos.map((torneo) => (
+                          <option key={torneo.id} value={torneo.id}>
+                            {torneo.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {/* Jugadores Equipo 1 */}
                     <div className="space-y-2">
                       <Label>Jugadores Equipo 1</Label>
-                      <Input placeholder="Ej: Carlos Ramírez / Ana González" />
+                      <Input
+                        name="equipo_1"
+                        value={partidoData.equipo_1}
+                        onChange={handleMatchChange}
+                        placeholder="Ej: Carlos Ramírez / Ana González"
+                      />
                     </div>
+                    {/* Jugadores Equipo 2 */}
                     <div className="space-y-2">
                       <Label>Jugadores Equipo 2</Label>
-                      <Input placeholder="Ej: Miguel Torres / Laura Hernández" />
+                      <Input
+                        name="equipo_2"
+                        value={partidoData.equipo_2}
+                        onChange={handleMatchChange}
+                        placeholder="Ej: Miguel Torres / Laura Hernández"
+                      />
                     </div>
+                    {/* Fecha */}
+                    <div className="space-y-2">
+                      <Label>Fecha</Label>
+                      <Input
+                        name="fecha"
+                        type="date"
+                        value={partidoData.fecha}
+                        onChange={handleMatchChange}
+                      />
+                    </div>
+                    {/* Hora */}
+                    <div className="space-y-2">
+                      <Label>Hora</Label>
+                      <Input
+                        name="hora"
+                        type="time"
+                        value={partidoData.hora}
+                        onChange={handleMatchChange}
+                      />
+                    </div>
+                    {/* Resultado */}
                     <div className="space-y-2">
                       <Label>Resultado</Label>
-                      <Input placeholder="Ej: 6-4, 7-5" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Fecha y Hora</Label>
-                      <Input type="datetime-local" />
+                      <Input
+                        name="resultado"
+                        value={partidoData.resultado}
+                        onChange={handleMatchChange}
+                        placeholder="Ej: 6-4, 7-5"
+                      />
                     </div>
                   </div>
-                  <Button className="w-full">Guardar Partido</Button>
+                  <Button className="w-full" onClick={handleRegisterMatch}>
+                    Registrar Partido
+                  </Button>
                 </TabsContent>
                 <TabsContent value="tournament" className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
