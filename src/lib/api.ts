@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Usuario, Torneo, Partido } from './types';
 
 // Configura la instancia de Axios
 const API = axios.create({
@@ -13,41 +14,37 @@ export const fetchUsuarios = async () => {
 
 // Función para obtener todos los torneos
 export const fetchTorneos = async () => {
-    const response = await API.get('/torneos/');
-    return response.data;
+    try {
+        const response = await API.get('/torneos/');
+        return response.data;
+    } catch (error: any) {
+        console.error('Error fetching torneos:', error.response || error.message);
+        throw new Error('Error al obtener torneos');
+    }
 };
 
+
 // Función para crear un nuevo usuario
-export const createUsuario = async (usuario: {
-    nombre_completo: string;
-    email: string;
-    rating_inicial?: number;
-    club?: string | null; // El ? es para que sea opcional
-}) => {
+export const createUsuario = async (usuario: Usuario) => {
     const response = await API.post('/usuarios/', usuario);
     return response.data;
 };
 
-export const createTorneo = async (torneo: {
-    nombre: string;
-    sede: string;
-    fecha_inicio: string;
-    fecha_fin: string;
-    premio_dinero: number;
-    puntos: number;
-    imagen_url: string;
-    tags: string[];
-}) => {
-    const response = await API.post('/torneos/', torneo);
-    return response.data;
+export const createTorneo = async (torneo: Torneo) => {
+    if (!torneo.nombre || !torneo.sede || !torneo.fecha_inicio || !torneo.fecha_fin) {
+        throw new Error('Faltan campos obligatorios en el torneo.');
+    }
+
+    try {
+        const response = await API.post('/torneos/', torneo);
+        return response.data;
+    } catch (error: any) {
+        console.error('Error creando torneo:', error.response || error.message);
+        throw new Error('Error al crear torneo');
+    }
 };
-export const createPartido = async (partido: {
-    equipo_1: string;
-    equipo_2: string;
-    fecha_hora: string;
-    resultado?: string;
-    torneo: string; // ID del torneo
-}) => {
+
+export const createPartido = async (partido: Partido) => {
     const response = await API.post('/partidos/', partido);
     return response.data;
 };
