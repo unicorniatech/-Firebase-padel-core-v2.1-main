@@ -174,17 +174,10 @@ useEffect(() => {
     };
     //Función para registrar nuevo torneo
     const handleRegisterTorneo = async () => {
+      console.log("handleRegisterTorneo se ejecuta"); 
       try {
         //Para validar que una URL sea válida
-        const urlRegex =/^(https?:\/\/)?([\w.-]+)+(:\d+)?(\/([\w/._-]*)?)?$/;
-        if (!urlRegex.test(torneoData.imagen_url)) {
-            toast({
-                title: 'Error en la URL',
-                description: 'Proporciona una URL válida para la imagen.',
-                variant: 'destructive',
-            });
-            return;
-        }
+        
         const torneo = {
              ...torneoData,
              premio_dinero: parseFloat(torneoData.premio_dinero), // Convertir el premio a número
