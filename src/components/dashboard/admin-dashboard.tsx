@@ -37,7 +37,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { createUsuario, createTorneo,createPartido,fetchTorneos } from '@/lib/api';
+import { createUsuario, createTorneo,createPartido,fetchTorneos, fetchUsuarios } from '@/lib/api';
+import { Partido } from '@/lib/types';
 
 
 interface PendingApproval {
@@ -53,6 +54,7 @@ interface Torneo {
   id: string; // Cambia a 'number' si el backend usa IDs numéricos
   nombre: string; // El nombre del torneo
 }
+
 
 
 export function AdminDashboard() {
@@ -102,14 +104,29 @@ export function AdminDashboard() {
     tags: [''],
 });
  // Estado para manejar los datos del formulario de "Registrar Partido"
-const [partidoData, setPartidoData] = useState({
-  equipo_1: '',
-  equipo_2: '',
+ const [partidoData, setPartidoData] = useState<Partido>({
+  equipo_1: [], // IDs de los jugadores seleccionados para el equipo 1
+  equipo_2: [], // IDs de los jugadores seleccionados para el equipo 2
   fecha: '',
   hora: '',
   resultado: '',
   torneo: '', // ID del torneo seleccionado
 });
+
+const [usuarios, setUsuarios] = useState([]); // Lista de usuarios registrados
+
+useEffect(() => {
+    const loadUsuarios = async () => {
+        try {
+            const data = await fetchUsuarios();
+            setUsuarios(data); // Almacena los usuarios en el estado
+        } catch (error) {
+            console.error('Error al cargar usuarios:', error);
+        }
+    };
+    loadUsuarios();
+}, []); // Solo al montar el componente
+
 // Estado para manejar la lista de torneos
 const [torneos, setTorneos] = useState<Torneo[]>([]); // Estado para manejar la lista de torneos
 //useEffect para cargar los torneos al montar el componente
@@ -139,7 +156,31 @@ useEffect(() => {
 };
   const handleMatchChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setPartidoData({ ...partidoData, [name]: value });
+    if (name === 'equipo_1' || name === 'equipo_2') {
+      const selectedOptions = Array.from((e.target as HTMLSelectElement).selectedOptions).map((option) => option.value);
+      setPartidoData((prev) => ({ ...prev, [name]: selectedOptions }));
+      return;
+    }
+  
+    // Caso especial para fecha y hora (actualiza fecha_hora)
+    if (name === 'fecha') {
+      setPartidoData((prev) => ({
+        ...prev,
+        fecha_hora: `${value}T${prev.fecha_hora.split('T')[1] || '00:00:00'}`,
+      }));
+      return;
+    }
+  
+    if (name === 'hora') {
+      setPartidoData((prev) => ({
+        ...prev,
+        fecha_hora: `${prev.fecha_hora.split('T')[0] || '1970-01-01'}T${value}`,
+      }));
+      return;
+    }
+  
+    // Manejo general para otros campos
+    setPartidoData((prev) => ({ ...prev, [name]: value }));
   };
 
 
@@ -213,37 +254,42 @@ useEffect(() => {
     const handleRegisterMatch = async () => {
       try {
         const partido = {
-            ...partidoData,
-            fecha_hora: `${partidoData.fecha}T${partidoData.hora}`, // Combina fecha y hora
+          equipo_1: partidoData.equipo_1, // Array de IDs de jugadores del equipo 1
+          equipo_2: partidoData.equipo_2, // Array de IDs de jugadores del equipo 2
+          fecha: partidoData.fecha_hora.split('T')[0], // Extrae solo la fecha
+          hora: partidoData.fecha_hora.split('T')[1], // Extrae solo la hora
+          resultado: partidoData.resultado,
+          torneo: partidoData.torneo,
         };
+    
         console.log('Datos enviados al backend:', partido);
-
-        const response = await createPartido(partido); // Función para llamar a la API
+    
+        const response = await createPartido(partido); // Llama a la API
         console.log('Partido registrado:', response);
-
+    
         toast({
-            title: 'Partido registrado con éxito',
-            description: 'El partido ha sido agregado correctamente.',
+          title: 'Partido registrado con éxito',
+          description: 'El partido ha sido agregado correctamente.',
         });
-
-        // Limpiar el formulario
+    
+        // Limpia el formulario
         setPartidoData({
-            equipo_1: '',
-            equipo_2: '',
-            fecha: '',
-            hora: '',
-            resultado: '',
-            torneo: '',
+          equipo_1: [],
+          equipo_2: [],
+          fecha_hora: '',
+          resultado: '',
+          torneo: '',
         });
-    } catch (error) {
-        //console.error('Error al registrar partido:', error.response?.data || error);
+      } catch (error) {
+        console.error('Error al registrar partido:', error);
         toast({
-            title: 'Error al registrar partido',
-            description: 'Hubo un problema al registrar el partido. Intenta nuevamente.',
-            variant: 'destructive',
+          title: 'Error al registrar partido',
+          description: 'Hubo un problema al registrar el partido. Intenta nuevamente.',
+          variant: 'destructive',
         });
       }
     };
+    
   
   
   const handleApproval = (id: string, approved: boolean) => {
@@ -324,22 +370,36 @@ useEffect(() => {
                     {/* Jugadores Equipo 1 */}
                     <div className="space-y-2">
                       <Label>Jugadores Equipo 1</Label>
-                      <Input
+                      <select
                         name="equipo_1"
+                        multiple
                         value={partidoData.equipo_1}
                         onChange={handleMatchChange}
-                        placeholder="Ej: Carlos Ramírez / Ana González"
-                      />
+                        className="border rounded px-3 py-2 w-full"
+                      >
+                        {usuarios.map((usuario) => (
+                          <option key={usuario.id} value={usuario.id}>
+                            {usuario.nombre_completo}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     {/* Jugadores Equipo 2 */}
                     <div className="space-y-2">
                       <Label>Jugadores Equipo 2</Label>
-                      <Input
+                      <select
                         name="equipo_2"
+                        multiple
                         value={partidoData.equipo_2}
                         onChange={handleMatchChange}
-                        placeholder="Ej: Miguel Torres / Laura Hernández"
-                      />
+                        className="border rounded px-3 py-2 w-full"
+                      >
+                        {usuarios.map((usuario) => (
+                          <option key={usuario.id} value={usuario.id}>
+                            {usuario.nombre_completo}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     {/* Fecha */}
                     <div className="space-y-2">
@@ -347,7 +407,6 @@ useEffect(() => {
                       <Input
                         name="fecha"
                         type="date"
-                        value={partidoData.fecha}
                         onChange={handleMatchChange}
                       />
                     </div>
@@ -357,7 +416,6 @@ useEffect(() => {
                       <Input
                         name="hora"
                         type="time"
-                        value={partidoData.hora}
                         onChange={handleMatchChange}
                       />
                     </div>

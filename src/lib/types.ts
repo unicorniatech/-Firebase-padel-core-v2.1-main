@@ -18,8 +18,8 @@ export interface Torneo {
 }
 
 export interface Partido {
-    equipo_1: string;
-    equipo_2: string;
+    equipo_1: string[];
+    equipo_2: string[];
     fecha_hora: string;
     resultado?: string;
     torneo: string;
