@@ -7,10 +7,11 @@ const API = axios.create({
 });
 
 // Función para obtener todos los usuarios
-export const fetchUsuarios = async () => {
+export const fetchUsuarios = async (): Promise<Usuario[]> => {
     const response = await API.get('/usuarios/');
     return response.data;
-};
+  };
+  
 
 // Función para obtener todos los torneos
 export const fetchTorneos = async () => {
@@ -22,6 +23,12 @@ export const fetchTorneos = async () => {
         throw new Error('Error al obtener torneos');
     }
 };
+
+//función para obtener todos los partidos
+export const fetchPartidos = async (): Promise<Partido[]> => {
+    const response = await API.get('/partidos/');
+    return response.data;
+  };
 
 
 // Función para crear un nuevo usuario

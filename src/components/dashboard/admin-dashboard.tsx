@@ -37,23 +37,15 @@ import {
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { createUsuario, createTorneo,createPartido,fetchTorneos, fetchUsuarios } from '@/lib/api';
-import { Partido } from '@/lib/types';
-
-
-interface PendingApproval {
-  id: string;
-  type: 'ranking' | 'match' | 'tournament';
-  title: string;
-  description: string;
-  status: 'pending' | 'approved' | 'rejected';
-  timestamp: string;
-}
-// Define la interfaz para describir los datos de un torneo
-interface Torneo {
-  id: string; // Cambia a 'number' si el backend usa IDs numéricos
-  nombre: string; // El nombre del torneo
-}
+import { createUsuario, createTorneo,createPartido,fetchTorneos, fetchUsuarios, fetchPartidos } from '@/lib/api';
+import { 
+  Partido,
+  Torneo,
+  Usuario,
+  PendingApproval, 
+  PartidoForm,
+  UsuarioForm,
+ } from '@/lib/types';
 
 
 
@@ -103,17 +95,29 @@ export function AdminDashboard() {
     imagen_url:'',
     tags: [''],
 });
+const [partidos, setPartidos] = useState<Partido[]>([]);
  // Estado para manejar los datos del formulario de "Registrar Partido"
- const [partidoData, setPartidoData] = useState<Partido>({
+ const [partidoData, setPartidoData] = useState<PartidoForm>({
   equipo_1: [], // IDs de los jugadores seleccionados para el equipo 1
   equipo_2: [], // IDs de los jugadores seleccionados para el equipo 2
-  fecha: '',
-  hora: '',
+  fecha_hora: '',
   resultado: '',
   torneo: '', // ID del torneo seleccionado
 });
+useEffect(() => {
+  const loadPartidos = async () => {
+    try {
+      const data = await fetchPartidos(); // Llama a la API para obtener los partidos
+      setPartidos(data); // Guarda los partidos en el estado
+    } catch (error) {
+      console.error('Error al cargar partidos:', error);
+    }
+  };
+  loadPartidos();
+}, []);
 
-const [usuarios, setUsuarios] = useState([]); // Lista de usuarios registrados
+
+const [usuarios, setUsuarios] = useState<Usuario[]>([]); // Lista de usuarios registrados
 
 useEffect(() => {
     const loadUsuarios = async () => {
@@ -254,23 +258,20 @@ useEffect(() => {
     const handleRegisterMatch = async () => {
       try {
         const partido = {
-          equipo_1: partidoData.equipo_1, // Array de IDs de jugadores del equipo 1
-          equipo_2: partidoData.equipo_2, // Array de IDs de jugadores del equipo 2
-          fecha: partidoData.fecha_hora.split('T')[0], // Extrae solo la fecha
-          hora: partidoData.fecha_hora.split('T')[1], // Extrae solo la hora
-          resultado: partidoData.resultado,
-          torneo: partidoData.torneo,
+          ...partidoData,
+          fecha_hora: `${partidoData.fecha_hora.split('T')[0]}T${partidoData.fecha_hora.split('T')[1]}`, // Formato ISO
         };
     
-        console.log('Datos enviados al backend:', partido);
-    
-        const response = await createPartido(partido); // Llama a la API
+        const response = await createPartido(partido);
         console.log('Partido registrado:', response);
     
         toast({
           title: 'Partido registrado con éxito',
           description: 'El partido ha sido agregado correctamente.',
         });
+    
+        // Actualiza la lista de partidos
+        setPartidos((prev) => [...prev, response]);
     
         // Limpia el formulario
         setPartidoData({
@@ -356,7 +357,7 @@ useEffect(() => {
                       <select
                         name="torneo"
                         value={partidoData.torneo}
-                        onChange={handleMatchChange}
+                        onChange={(e) => setPartidoData({ ...partidoData, torneo: e.target.value })}
                         className="border rounded px-3 py-2 w-full"
                       >
                         <option value="">Selecciona un Torneo</option>
@@ -369,21 +370,26 @@ useEffect(() => {
                     </div>
                     {/* Jugadores Equipo 1 */}
                     <div className="space-y-2">
-                      <Label>Jugadores Equipo 1</Label>
-                      <select
-                        name="equipo_1"
-                        multiple
-                        value={partidoData.equipo_1}
-                        onChange={handleMatchChange}
-                        className="border rounded px-3 py-2 w-full"
-                      >
-                        {usuarios.map((usuario) => (
-                          <option key={usuario.id} value={usuario.id}>
-                            {usuario.nombre_completo}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    <Label>Jugadores Equipo 1</Label>
+                    <select
+                      name="equipo_1"
+                      multiple
+                      value={partidoData.equipo_1}
+                      onChange={(e) =>
+                        setPartidoData({
+                          ...partidoData,
+                          equipo_1: Array.from(e.target.selectedOptions).map((o) => o.value),
+                        })
+                      }
+                      className="border rounded px-3 py-2 w-full"
+                    >
+                      {usuarios.map((usuario) => (
+                        <option key={usuario.id} value={usuario.id}>
+                          {usuario.nombre_completo}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                     {/* Jugadores Equipo 2 */}
                     <div className="space-y-2">
                       <Label>Jugadores Equipo 2</Label>
