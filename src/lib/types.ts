@@ -1,6 +1,6 @@
 // types.ts
 export interface Usuario {
-    id: string;
+    id?: string;
     nombre_completo: string;
     email: string;
     rating_inicial?: number;
@@ -8,7 +8,7 @@ export interface Usuario {
 }
 
 export interface Torneo {
-    id: string;
+    id?: string;
     nombre: string;
     sede: string;
     fecha_inicio: string;
@@ -20,7 +20,7 @@ export interface Torneo {
 }
 
 export interface Partido {
-    id: string;
+    id?: string;
     equipo_1: string[];
     equipo_2: string[];
     fecha_hora: string;

@@ -104,6 +104,9 @@ const [partidos, setPartidos] = useState<Partido[]>([]);
   resultado: '',
   torneo: '', // ID del torneo seleccionado
 });
+// Estados para búsqueda
+const [searchEquipo1, setSearchEquipo1] = useState(''); // Búsqueda para Equipo 1
+const [searchEquipo2, setSearchEquipo2] = useState(''); // Búsqueda para Equipo 2
 useEffect(() => {
   const loadPartidos = async () => {
     try {
@@ -357,7 +360,9 @@ useEffect(() => {
                       <select
                         name="torneo"
                         value={partidoData.torneo}
-                        onChange={(e) => setPartidoData({ ...partidoData, torneo: e.target.value })}
+                        onChange={(e) =>
+                          setPartidoData((prev) => ({ ...prev, torneo: e.target.value }))
+                        }
                         className="border rounded px-3 py-2 w-full"
                       >
                         <option value="">Selecciona un Torneo</option>
@@ -368,154 +373,217 @@ useEffect(() => {
                         ))}
                       </select>
                     </div>
-                    {/* Jugadores Equipo 1 */}
-                    <div className="space-y-2">
-                    <Label>Jugadores Equipo 1</Label>
-                    <select
-                      name="equipo_1"
-                      multiple
-                      value={partidoData.equipo_1}
-                      onChange={(e) =>
-                        setPartidoData({
-                          ...partidoData,
-                          equipo_1: Array.from(e.target.selectedOptions).map((o) => o.value),
-                        })
-                      }
-                      className="border rounded px-3 py-2 w-full"
-                    >
-                      {usuarios.map((usuario) => (
-                        <option key={usuario.id} value={usuario.id}>
-                          {usuario.nombre_completo}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                    {/* Jugadores Equipo 2 */}
-                    <div className="space-y-2">
-                      <Label>Jugadores Equipo 2</Label>
-                      <select
-                        name="equipo_2"
-                        multiple
-                        value={partidoData.equipo_2}
-                        onChange={handleMatchChange}
-                        className="border rounded px-3 py-2 w-full"
-                      >
-                        {usuarios.map((usuario) => (
-                          <option key={usuario.id} value={usuario.id}>
-                            {usuario.nombre_completo}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+
                     {/* Fecha */}
                     <div className="space-y-2">
                       <Label>Fecha</Label>
                       <Input
                         name="fecha"
                         type="date"
-                        onChange={handleMatchChange}
+                        value={partidoData.fecha_hora.split('T')[0] || ''}
+                        onChange={(e) =>
+                          setPartidoData((prev) => ({
+                            ...prev,
+                            fecha_hora: `${e.target.value}T${prev.fecha_hora.split('T')[1] || '00:00'}`,
+                          }))
+                        }
                       />
                     </div>
+
                     {/* Hora */}
                     <div className="space-y-2">
                       <Label>Hora</Label>
                       <Input
                         name="hora"
                         type="time"
-                        onChange={handleMatchChange}
+                        value={partidoData.fecha_hora.split('T')[1] || ''}
+                        onChange={(e) =>
+                          setPartidoData((prev) => ({
+                            ...prev,
+                            fecha_hora: `${prev.fecha_hora.split('T')[0] || '1970-01-01'}T${e.target.value}`,
+                          }))
+                        }
                       />
                     </div>
+
                     {/* Resultado */}
                     <div className="space-y-2">
                       <Label>Resultado</Label>
                       <Input
                         name="resultado"
                         value={partidoData.resultado}
-                        onChange={handleMatchChange}
+                        onChange={(e) =>
+                          setPartidoData((prev) => ({ ...prev, resultado: e.target.value }))
+                        }
                         placeholder="Ej: 6-4, 7-5"
                       />
                     </div>
+
+                    {/* Buscador de Jugadores para Equipo 1 */}
+                    <div className="space-y-2 col-span-2">
+                      <Label>Jugadores Equipo 1</Label>
+                      <Input
+                        type="text"
+                        placeholder="Buscar por email"
+                        value={searchEquipo1}
+                        onChange={(e) => setSearchEquipo1(e.target.value)}
+                        className="border rounded px-3 py-2 w-full"
+                      />
+                      <div className="max-h-40 overflow-y-auto border rounded">
+                        {usuarios
+                          .filter((usuario) =>
+                            usuario.email.toLowerCase().includes(searchEquipo1.toLowerCase())
+                          )
+                          .map((usuario) => (
+                            <div key={usuario.id} className="flex items-center gap-2 p-2">
+                              <input
+                                type="checkbox"
+                                value={usuario.id}
+                                checked={usuario.id ? partidoData.equipo_1.includes(usuario.id) : false}
+
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setPartidoData((prev) => ({
+                                      ...prev,
+                                      equipo_1: [...prev.equipo_1, e.target.value],
+                                    }));
+                                  } else {
+                                    setPartidoData((prev) => ({
+                                      ...prev,
+                                      equipo_1: prev.equipo_1.filter((id) => id !== e.target.value),
+                                    }));
+                                  }
+                                }}
+                              />
+                              <span>{usuario.nombre_completo}</span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+
+                    {/* Buscador de Jugadores para Equipo 2 */}
+                    <div className="space-y-2 col-span-2">
+                      <Label>Jugadores Equipo 2</Label>
+                      <Input
+                        type="text"
+                        placeholder="Buscar por email"
+                        value={searchEquipo2}
+                        onChange={(e) => setSearchEquipo2(e.target.value)}
+                        className="border rounded px-3 py-2 w-full"
+                      />
+                      <div className="max-h-40 overflow-y-auto border rounded">
+                        {usuarios
+                          .filter((usuario) =>
+                            usuario.email.toLowerCase().includes(searchEquipo2.toLowerCase())
+                          )
+                          .map((usuario) => (
+                            <div key={usuario.id} className="flex items-center gap-2 p-2">
+                              <input
+                                type="checkbox"
+                                value={usuario.id}
+                                checked={usuario.id ? partidoData.equipo_2.includes(usuario.id) : false}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setPartidoData((prev) => ({
+                                      ...prev,
+                                      equipo_2: [...prev.equipo_2, e.target.value],
+                                    }));
+                                  } else {
+                                    setPartidoData((prev) => ({
+                                      ...prev,
+                                      equipo_2: prev.equipo_2.filter((id) => id !== e.target.value),
+                                    }));
+                                  }
+                                }}
+                              />
+                              <span>{usuario.nombre_completo}</span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Botón para Registrar el Partido */}
                   <Button className="w-full" onClick={handleRegisterMatch}>
                     Registrar Partido
                   </Button>
                 </TabsContent>
                 <TabsContent value="tournament" className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-    <div className="space-y-2">
-      <Label>Nombre del Torneo</Label>
-      <Input
-        name="nombre"
-        value={torneoData.nombre}
-        onChange={handleTorneoChange}
-        placeholder="Ej: Torneo Nacional 2024"
-      />
-    </div>
-    <div className="space-y-2">
-      <Label>Sede</Label>
-      <Input
-        name="sede"
-        value={torneoData.sede}
-        onChange={handleTorneoChange}
-        placeholder="Ej: Club de Padel Cuernavaca"
-      />
-    </div>
-    <div className="space-y-2">
-      <Label>Fecha Inicio</Label>
-      <Input
-        name="fecha_inicio"
-        type="date"
-        value={torneoData.fecha_inicio}
-        onChange={handleTorneoChange}
-      />
-    </div>
-    <div className="space-y-2">
-      <Label>Fecha Fin</Label>
-      <Input
-        name="fecha_fin"
-        type="date"
-        value={torneoData.fecha_fin}
-        onChange={handleTorneoChange}
-      />
-    </div>
-    <div className="space-y-2">
-      <Label>Premio en Dinero</Label>
-      <Input
-        name="premio_dinero"
-        type="number"
-        value={torneoData.premio_dinero}
-        onChange={handleTorneoChange}
-        placeholder="Ej: 500000"
-      />
-    </div>
-    {/* Puntos */}
-    <div className="space-y-2">
-      <Label>Puntos para Ranking</Label>
-      <Input
-        name="puntos"
-        type="number"
-        value={torneoData.puntos}
-        onChange={(e) => setTorneoData({ ...torneoData, puntos: e.target.value })}
-        placeholder="Ej: 250"
-      />
-    </div>
-    {/* URL de Imagen */}
-    <div className="space-y-2">
-      <Label>URL de Imagen</Label>
-      <Input
-        name="imagen_url"
-        type="url"
-        value={torneoData.imagen_url}
-        onChange={(e) => setTorneoData({ ...torneoData, imagen_url: e.target.value })}
-        placeholder="Ej: https://example.com/imagen.jpg"
-      />
-    </div>
-   
-  </div>
-  <Button className="w-full" onClick={handleRegisterTorneo}>
-    Registrar Torneo
-  </Button>
-</TabsContent>
+                    <div className="space-y-2">
+                      <Label>Nombre del Torneo</Label>
+                      <Input
+                        name="nombre"
+                        value={torneoData.nombre}
+                        onChange={handleTorneoChange}
+                        placeholder="Ej: Torneo Nacional 2024"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Sede</Label>
+                      <Input
+                        name="sede"
+                        value={torneoData.sede}
+                        onChange={handleTorneoChange}
+                        placeholder="Ej: Club de Padel Cuernavaca"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Fecha Inicio</Label>
+                      <Input
+                        name="fecha_inicio"
+                        type="date"
+                        value={torneoData.fecha_inicio}
+                        onChange={handleTorneoChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Fecha Fin</Label>
+                      <Input
+                        name="fecha_fin"
+                        type="date"
+                        value={torneoData.fecha_fin}
+                        onChange={handleTorneoChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Premio en Dinero</Label>
+                      <Input
+                        name="premio_dinero"
+                        type="number"
+                        value={torneoData.premio_dinero}
+                        onChange={handleTorneoChange}
+                        placeholder="Ej: 500000"
+                      />
+                    </div>
+                    {/* Puntos */}
+                    <div className="space-y-2">
+                      <Label>Puntos para Ranking</Label>
+                      <Input
+                        name="puntos"
+                        type="number"
+                        value={torneoData.puntos}
+                        onChange={(e) => setTorneoData({ ...torneoData, puntos: e.target.value })}
+                        placeholder="Ej: 250"
+                      />
+                    </div>
+                    {/* URL de Imagen */}
+                    <div className="space-y-2">
+                      <Label>URL de Imagen</Label>
+                      <Input
+                        name="imagen_url"
+                        type="url"
+                        value={torneoData.imagen_url}
+                        onChange={(e) => setTorneoData({ ...torneoData, imagen_url: e.target.value })}
+                        placeholder="Ej: https://example.com/imagen.jpg"
+                      />
+                    </div>
+                  
+                  </div>
+                  <Button className="w-full" onClick={handleRegisterTorneo}>
+                    Registrar Torneo
+                  </Button>
+                </TabsContent>
                 <TabsContent value="player" className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
