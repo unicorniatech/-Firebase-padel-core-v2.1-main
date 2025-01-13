@@ -260,12 +260,25 @@ useEffect(() => {
     //Función para registrar nuevo Partido
     const handleRegisterMatch = async () => {
       try {
-        const partido = {
-          ...partidoData,
-          fecha_hora: `${partidoData.fecha_hora.split('T')[0]}T${partidoData.fecha_hora.split('T')[1]}`, // Formato ISO
+        // 1) De tu estado partidoData, extrae la fecha y la hora
+        const [fecha, hora] = partidoData.fecha_hora.split('T');
+    
+        // 2) Construye un objeto que coincida con el serializer del backend
+        const partidoParaEnviar = {
+          // ID del torneo:
+          torneo: partidoData.torneo,
+          // Lista de usuarios en equipo 1 (IDs):
+          equipo_1_ids: partidoData.equipo_1,
+          // Lista de usuarios en equipo 2 (IDs):
+          equipo_2_ids: partidoData.equipo_2,
+          // Campos separados:
+          fecha,
+          hora,
+          // Resultado (opcional)
+          resultado: partidoData.resultado,
         };
     
-        const response = await createPartido(partido);
+        const response = await createPartido(partidoParaEnviar);
         console.log('Partido registrado:', response);
     
         toast({

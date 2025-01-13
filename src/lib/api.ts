@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Usuario, Torneo, Partido } from './types';
+import { Usuario, Torneo, Partido, PartidoCreate } from './types';
 
 // Configura la instancia de Axios
 const API = axios.create({
@@ -51,8 +51,8 @@ export const createTorneo = async (torneo: Torneo) => {
     }
 };
 
-export const createPartido = async (partido: Partido) => {
+export const createPartido = async (partido: PartidoCreate) => {
     const response = await API.post('/partidos/', partido);
     return response.data;
-};
+  };
 

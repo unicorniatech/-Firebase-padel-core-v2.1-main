@@ -62,3 +62,11 @@ export interface PartidoForm {
     imagen_url: string;
     tags: string[];
   }
+  export interface PartidoCreate {
+    torneo: string;
+    equipo_1_ids: string[];
+    equipo_2_ids: string[];
+    fecha: string;
+    hora: string;
+    resultado?: string;
+  }
