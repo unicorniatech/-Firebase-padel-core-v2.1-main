@@ -1,5 +1,11 @@
 import axios from 'axios';
-import { Usuario, Torneo, Partido, PartidoCreate } from './types';
+import { 
+    Usuario, 
+    Torneo, 
+    Partido, 
+    PartidoCreate,
+    Aprobacion
+ } from './types';
 
 // Configura la instancia de Axios
 const API = axios.create({
@@ -56,3 +62,27 @@ export const createPartido = async (partido: PartidoCreate) => {
     return response.data;
   };
 
+// 1) Obtener la lista de aprobaciones
+export const fetchAprobaciones = async (): Promise<Aprobacion[]> => {
+    const response = await API.get('/aprobaciones/');
+    return response.data;
+  };
+// 2) Aprobar una solicitud de aprobación
+export const approveAprobacion = async (id: number) => {
+    const response = await API.patch(`/aprobaciones/${id}/approve/`);
+    return response.data;
+  };
+// 3) Rechazar una solicitud de aprobación
+export const rejectAprobacion = async (id: number) => {
+    const response = await API.patch(`/aprobaciones/${id}/reject/`);
+    return response.data;
+  };
+// 4)Función para mandar a la tabla de aprobaciones
+export const createAprobacion = async (payload: {
+    tipo: 'tournament' | 'match';
+    data: Record<string, any>;
+  }) => {
+    // Reemplaza 'API' con la instancia de axios
+    const response = await API.post('/aprobaciones/', payload);
+    return response.data;
+  };

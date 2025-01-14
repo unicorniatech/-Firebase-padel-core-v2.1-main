@@ -24,8 +24,6 @@ import {
   AlertTriangle,
   Plus,
   Bell,
-  MapPin,
-  DollarSign,
 } from 'lucide-react';
 import {
   Dialog,
@@ -37,139 +35,324 @@ import {
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { createUsuario, createTorneo,createPartido,fetchTorneos, fetchUsuarios, fetchPartidos } from '@/lib/api';
-import { 
+
+// Importamos las funciones para aprobaciones y para CRUD de usuario/torneo/partido:
+import {
+  fetchAprobaciones,
+  approveAprobacion,
+  rejectAprobacion,
+  createAprobacion,
+  createUsuario,
+  createTorneo,
+  createPartido,
+  fetchTorneos,
+  fetchUsuarios,
+  fetchPartidos,
+} from '@/lib/api';
+
+// Importamos los tipos necesarios
+import {
   Partido,
   Torneo,
   Usuario,
-  PendingApproval, 
+  Aprobacion,
   PartidoForm,
   UsuarioForm,
- } from '@/lib/types';
-
-
+  TorneoForm,
+} from '@/lib/types';
 
 export function AdminDashboard() {
   const { toast } = useToast();
-  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([
-    {
-      id: '1',
-      type: 'ranking',
-      title: 'Actualización de Ranking',
-      description: 'Carlos Ramírez sube al puesto #3 (+2)',
-      status: 'pending',
-      timestamp: '12:30 PM',
-    },
-    {
-      id: '2',
-      type: 'match',
-      title: 'Resultado de Partido',
-      description: 'Final Torneo Nacional: C.Ramírez/A.González vs M.Torres/L.Hernández (6-4, 7-5)',
-      status: 'pending',
-      timestamp: '11:45 AM',
-    },
-    {
-      id: '3',
-      type: 'tournament',
-      title: 'Nuevo Torneo',
-      description: 'Torneo Verano 2024 - Club Elite (25-30 Junio)',
-      status: 'pending',
-      timestamp: '10:15 AM',
-    },
-  ]);
-  // Estado para manejar los datos del formulario de "Registrar Jugador"
-  const [playerData, setPlayerData] = useState({
+
+  // =========================================
+  // Aprobaciones Reales (desde la base de datos)
+  // =========================================
+  const [pendingApprovals, setPendingApprovals] = useState<Aprobacion[]>([]);
+
+  // Cargar aprobaciones al montar el componente
+  useEffect(() => {
+    const loadAprobaciones = async () => {
+      try {
+        const data = await fetchAprobaciones(); // GET /aprobaciones/
+        // Filtra las que están en estado 'pending'
+        const pendientes = data.filter((item) => item.status === 'pending');
+        setPendingApprovals(pendientes);
+      } catch (error) {
+        console.error('Error al cargar aprobaciones:', error);
+      }
+    };
+    loadAprobaciones();
+  }, []);
+
+  /**
+   * Maneja la decisión de aprobación/rechazo de una solicitud.
+   * Renombrado a 'handleAprobacionDecision' para evitar conflictos con otro handleApproval.
+   */
+  const handleAprobacionDecision = async (id: number, isApproved: boolean) => {
+    try {
+      if (isApproved) {
+        await approveAprobacion(id); // PATCH /aprobaciones/<id>/approve/
+        toast({
+          title: 'Aprobado',
+          description: 'La solicitud ha sido aprobada exitosamente.',
+        });
+      } else {
+        await rejectAprobacion(id); // PATCH /aprobaciones/<id>/reject/
+        toast({
+          title: 'Rechazado',
+          description: 'La solicitud ha sido rechazada.',
+          variant: 'destructive',
+        });
+      }
+      // Quita el elemento aprobado/rechazado de la lista local
+      setPendingApprovals((prev) => prev.filter((item) => item.id !== id));
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo procesar la aprobación/rechazo.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // =========================================
+  // Estados para formularios de Jugador, Torneo y Partido
+  // =========================================
+  const [playerData, setPlayerData] = useState<UsuarioForm>({
     nombre_completo: '',
     email: '',
-    rating_inicial: '',
+    rating_inicial: 0,
     club: '',
   });
-  // Estado para manejar los datos del formulario de "Registrar Torneo"
-  const [torneoData, setTorneoData] = useState({
+
+  const [torneoData, setTorneoData] = useState<TorneoForm>({
     nombre: '',
     sede: '',
     fecha_inicio: '',
     fecha_fin: '',
-    premio_dinero: '',
-    puntos:'',
-    imagen_url:'',
+    premio_dinero: 0,
+    puntos: 0,
+    imagen_url: '',
     tags: [''],
-});
-const [partidos, setPartidos] = useState<Partido[]>([]);
- // Estado para manejar los datos del formulario de "Registrar Partido"
- const [partidoData, setPartidoData] = useState<PartidoForm>({
-  equipo_1: [], // IDs de los jugadores seleccionados para el equipo 1
-  equipo_2: [], // IDs de los jugadores seleccionados para el equipo 2
-  fecha_hora: '',
-  resultado: '',
-  torneo: '', // ID del torneo seleccionado
-});
-// Estados para búsqueda
-const [searchEquipo1, setSearchEquipo1] = useState(''); // Búsqueda para Equipo 1
-const [searchEquipo2, setSearchEquipo2] = useState(''); // Búsqueda para Equipo 2
-useEffect(() => {
-  const loadPartidos = async () => {
-    try {
-      const data = await fetchPartidos(); // Llama a la API para obtener los partidos
-      setPartidos(data); // Guarda los partidos en el estado
-    } catch (error) {
-      console.error('Error al cargar partidos:', error);
-    }
-  };
-  loadPartidos();
-}, []);
+  });
 
+  const [partidoData, setPartidoData] = useState<PartidoForm>({
+    equipo_1: [],
+    equipo_2: [],
+    fecha_hora: '',
+    resultado: '',
+    torneo: '',
+  });
 
-const [usuarios, setUsuarios] = useState<Usuario[]>([]); // Lista de usuarios registrados
+  // Para búsqueda de jugadores
+  const [searchEquipo1, setSearchEquipo1] = useState('');
+  const [searchEquipo2, setSearchEquipo2] = useState('');
 
-useEffect(() => {
+  // =========================================
+  // Estados para listas reales del backend
+  // =========================================
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [torneos, setTorneos] = useState<Torneo[]>([]);
+  const [partidos, setPartidos] = useState<Partido[]>([]);
+
+  // Cargar usuarios al montar
+  useEffect(() => {
     const loadUsuarios = async () => {
-        try {
-            const data = await fetchUsuarios();
-            setUsuarios(data); // Almacena los usuarios en el estado
-        } catch (error) {
-            console.error('Error al cargar usuarios:', error);
-        }
+      try {
+        const data = await fetchUsuarios();
+        setUsuarios(data);
+      } catch (error) {
+        console.error('Error al cargar usuarios:', error);
+      }
     };
     loadUsuarios();
-}, []); // Solo al montar el componente
+  }, []);
 
-// Estado para manejar la lista de torneos
-const [torneos, setTorneos] = useState<Torneo[]>([]); // Estado para manejar la lista de torneos
-//useEffect para cargar los torneos al montar el componente
-useEffect(() => {
-  const loadTorneos = async () => {
+  // Cargar torneos al montar
+  useEffect(() => {
+    const loadTorneos = async () => {
       try {
-          const data = await fetchTorneos(); // Llama a la API para obtener los torneos
-          setTorneos(data); // Actualiza el estado con la lista de torneos
+        const data = await fetchTorneos();
+        setTorneos(data);
       } catch (error) {
-          console.error('Error al cargar torneos:', error);
+        console.error('Error al cargar torneos:', error);
       }
-  };
-  loadTorneos();
-}, []); // Solo se ejecuta una vez al montar el componente
+    };
+    loadTorneos();
+  }, []);
 
+  // Cargar partidos al montar
+  useEffect(() => {
+    const loadPartidos = async () => {
+      try {
+        const data = await fetchPartidos();
+        setPartidos(data);
+      } catch (error) {
+        console.error('Error al cargar partidos:', error);
+      }
+    };
+    loadPartidos();
+  }, []);
 
+  // =========================================
+  // Handlers: Registrar Jugador, Torneo y Partido (directo al backend)
+  // =========================================
 
-  // Función para manejar cambios en los inputs del formulario (jugador)
+  // Para inputs del formulario de Jugador
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setPlayerData({ ...playerData, [name]: value });
+    setPlayerData((prev) => ({ ...prev, [name]: value }));
   };
-  // Función para manejar los cambios de los torneos
+
+  // Para inputs del formulario de Torneo
   const handleTorneoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setTorneoData({ ...torneoData, [name]: value });
-};
+    setTorneoData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleRegisterPlayer = async () => {
+    try {
+      const response = await createUsuario({
+        ...playerData,
+        rating_inicial: Number(playerData.rating_inicial),
+      });
+      console.log('Jugador registrado:', response);
+      toast({
+        title: 'Jugador registrado con éxito',
+        description: 'El jugador ha sido agregado correctamente.',
+      });
+      // Limpia el formulario
+      setPlayerData({
+        nombre_completo: '',
+        email: '',
+        rating_inicial: 0,
+        club: '',
+      });
+    } catch (error) {
+      console.error('Error al registrar jugador:', error);
+      toast({
+        title: 'Error al registrar jugador',
+        description: 'Hubo un problema al registrar al jugador. Intenta nuevamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRegisterTorneo = async () => {
+    try {
+      const dataForTorneo = {
+        nombre: torneoData.nombre,
+        sede: torneoData.sede,
+        fecha_inicio: torneoData.fecha_inicio,
+        fecha_fin: torneoData.fecha_fin,
+        premio_dinero: Number(torneoData.premio_dinero),
+        puntos: Number(torneoData.puntos),
+        imagen_url: torneoData.imagen_url,
+        tags: torneoData.tags
+      };
+  
+      // En vez de llamar a createTorneo, llamamos a createAprobacion:
+      await createAprobacion({
+        tipo: 'tournament',
+        data: dataForTorneo,
+      }); 
+      // ... no se crea el torneo real en la DB, solo la solicitud en 'aprobaciones'
+  
+      toast({
+        title: 'Solicitud de Torneo enviada',
+        description: 'El torneo requiere aprobación antes de crearse.',
+      });
+      // Limpia el formulario
+      setTorneoData({
+        nombre: '',
+        sede: '',
+        fecha_inicio: '',
+        fecha_fin: '',
+        premio_dinero: 0,
+        puntos: 0,
+        imagen_url: '',
+        tags: [''],
+      });
+    } catch (error) {
+      console.error('Error al registrar torneo:', error);
+      toast({
+        title: 'Error al registrar torneo',
+        description: 'Hubo un problema al registrar el torneo. Intenta nuevamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRegisterMatch = async () => {
+    try {
+      // 1) De tu estado partidoData, extrae la fecha y la hora
+      const [fecha, hora] = partidoData.fecha_hora.split('T');
+    
+      // 2) Construye un objeto que coincida con el serializer del backend
+      const partidoParaEnviar = {
+        // ID del torneo:
+        torneo: partidoData.torneo,
+        // Lista de usuarios en equipo 1 (IDs):
+        equipo_1_ids: partidoData.equipo_1,
+        // Lista de usuarios en equipo 2 (IDs):
+        equipo_2_ids: partidoData.equipo_2,
+        // Campos separados:
+        fecha,
+        hora,
+        // Resultado (opcional)
+        resultado: partidoData.resultado,
+      };
+  
+      const response = await createPartido(partidoParaEnviar);
+      console.log('Partido registrado:', response);
+  
+      toast({
+        title: 'Partido registrado con éxito',
+        description: 'El partido ha sido agregado correctamente.',
+      });
+  
+      // Actualiza la lista de partidos
+      setPartidos((prev) => [...prev, response]);
+  
+      // Limpia el formulario
+      setPartidoData({
+        equipo_1: [],
+        equipo_2: [],
+        fecha_hora: '',
+        resultado: '',
+        torneo: '',
+      });
+    } catch (error) {
+      console.error('Error al registrar partido:', error);
+      toast({
+        title: 'Error al registrar partido',
+        description: 'Hubo un problema al registrar el partido. Intenta nuevamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Manejo de selección de jugadores en checkboxes
   const handleMatchChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     if (name === 'equipo_1' || name === 'equipo_2') {
-      const selectedOptions = Array.from((e.target as HTMLSelectElement).selectedOptions).map((option) => option.value);
-      setPartidoData((prev) => ({ ...prev, [name]: selectedOptions }));
+      const checkboxValue = (e.target as HTMLInputElement).value;
+      const checked = (e.target as HTMLInputElement).checked;
+      if (checked) {
+        setPartidoData((prev) => ({
+          ...prev,
+          [name]: [...prev[name], checkboxValue],
+        }));
+      } else {
+        setPartidoData((prev) => ({
+          ...prev,
+          [name]: prev[name].filter((id) => id !== checkboxValue),
+        }));
+      }
       return;
     }
-  
-    // Caso especial para fecha y hora (actualiza fecha_hora)
+    // Fecha y Hora por separado
     if (name === 'fecha') {
       setPartidoData((prev) => ({
         ...prev,
@@ -177,7 +360,6 @@ useEffect(() => {
       }));
       return;
     }
-  
     if (name === 'hora') {
       setPartidoData((prev) => ({
         ...prev,
@@ -185,146 +367,11 @@ useEffect(() => {
       }));
       return;
     }
-  
-    // Manejo general para otros campos
+    // Resto de campos
     setPartidoData((prev) => ({ ...prev, [name]: value }));
   };
 
-
-    // Función para registrar un nuevo jugador
-    const handleRegisterPlayer = async () => {
-      try {
-        const jugador = {
-          ...playerData,
-          rating_inicial: parseFloat(playerData.rating_inicial), // Convierte el rating a número
-        };
-        const response = await createUsuario(jugador); // Envía los datos al backend
-        console.log('Jugador registrado:', response);
-        toast({
-          title: 'Jugador registrado con éxito',
-          description: 'El jugador ha sido agregado correctamente.',
-        });
-        // Limpia el formulario
-        setPlayerData({
-          nombre_completo: '',
-          email: '',
-          rating_inicial: '',
-          club: '',
-        });
-      } catch (error) {
-        console.error('Error al registrar jugador:', error);
-        toast({
-          title: 'Error al registrar jugador',
-          description: 'Hubo un problema al registrar al jugador. Intenta nuevamente.',
-          variant: 'destructive',
-        });
-      }
-    };
-    //Función para registrar nuevo torneo
-    const handleRegisterTorneo = async () => {
-      console.log("handleRegisterTorneo se ejecuta"); 
-      try {
-        //Para validar que una URL sea válida
-        
-        const torneo = {
-             ...torneoData,
-             premio_dinero: parseFloat(torneoData.premio_dinero), // Convertir el premio a número
-             puntos: parseInt(torneoData.puntos, 10),
-         };
-         const response = await createTorneo(torneo); // Llamar a la API
-         console.log('Torneo registrado:', response);
-         toast({
-             title: 'Torneo registrado con éxito',
-             description: 'El torneo ha sido agregado correctamente.',
-         });
-         // Limpiar el formulario
-         setTorneoData({
-             nombre: '',
-             sede: '',
-             fecha_inicio: '',
-             fecha_fin: '',
-             premio_dinero: '',
-             puntos: '',
-             imagen_url: '',
-             tags: [''],
-         });
-      } catch (error) {
-          console.error('Error al registrar torneo:', error);
-          toast({
-              title: 'Error al registrar torneo',
-              description: 'Hubo un problema al registrar el torneo. Intenta nuevamente.',
-              variant: 'destructive',
-        });
-      }
-    };
-    //Función para registrar nuevo Partido
-    const handleRegisterMatch = async () => {
-      try {
-        // 1) De tu estado partidoData, extrae la fecha y la hora
-        const [fecha, hora] = partidoData.fecha_hora.split('T');
-    
-        // 2) Construye un objeto que coincida con el serializer del backend
-        const partidoParaEnviar = {
-          // ID del torneo:
-          torneo: partidoData.torneo,
-          // Lista de usuarios en equipo 1 (IDs):
-          equipo_1_ids: partidoData.equipo_1,
-          // Lista de usuarios en equipo 2 (IDs):
-          equipo_2_ids: partidoData.equipo_2,
-          // Campos separados:
-          fecha,
-          hora,
-          // Resultado (opcional)
-          resultado: partidoData.resultado,
-        };
-    
-        const response = await createPartido(partidoParaEnviar);
-        console.log('Partido registrado:', response);
-    
-        toast({
-          title: 'Partido registrado con éxito',
-          description: 'El partido ha sido agregado correctamente.',
-        });
-    
-        // Actualiza la lista de partidos
-        setPartidos((prev) => [...prev, response]);
-    
-        // Limpia el formulario
-        setPartidoData({
-          equipo_1: [],
-          equipo_2: [],
-          fecha_hora: '',
-          resultado: '',
-          torneo: '',
-        });
-      } catch (error) {
-        console.error('Error al registrar partido:', error);
-        toast({
-          title: 'Error al registrar partido',
-          description: 'Hubo un problema al registrar el partido. Intenta nuevamente.',
-          variant: 'destructive',
-        });
-      }
-    };
-    
-  
-  
-  const handleApproval = (id: string, approved: boolean) => {
-    setPendingApprovals(prev => 
-      prev.map(item => 
-        item.id === id 
-          ? { ...item, status: approved ? 'approved' : 'rejected' }
-          : item
-      )
-    );
-
-    toast({
-      title: approved ? "Aprobado" : "Rechazado",
-      description: `La solicitud ha sido ${approved ? 'aprobada' : 'rechazada'} exitosamente.`,
-      duration: 3000,
-    });
-  };
-
+  // Ejemplo de stats
   const stats = [
     { label: 'Usuarios Activos', value: '156', icon: Users },
     { label: 'Partidos Hoy', value: '12', icon: Activity },
@@ -343,11 +390,7 @@ useEffect(() => {
               3
             </span>
           </Button>
-          <Input
-            placeholder="Buscar..."
-            className="max-w-xs"
-            icon={Search}
-          />
+          <Input placeholder="Buscar..." className="max-w-xs" icon={Search} />
           <Dialog>
             <DialogTrigger asChild>
               <Button>
@@ -365,6 +408,7 @@ useEffect(() => {
                   <TabsTrigger value="tournament">Torneo</TabsTrigger>
                   <TabsTrigger value="player">Jugador</TabsTrigger>
                 </TabsList>
+                {/* ===================== Partido ===================== */}
                 <TabsContent value="match" className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     {/* Selección del Torneo */}
@@ -386,7 +430,6 @@ useEffect(() => {
                         ))}
                       </select>
                     </div>
-
                     {/* Fecha */}
                     <div className="space-y-2">
                       <Label>Fecha</Label>
@@ -394,15 +437,9 @@ useEffect(() => {
                         name="fecha"
                         type="date"
                         value={partidoData.fecha_hora.split('T')[0] || ''}
-                        onChange={(e) =>
-                          setPartidoData((prev) => ({
-                            ...prev,
-                            fecha_hora: `${e.target.value}T${prev.fecha_hora.split('T')[1] || '00:00'}`,
-                          }))
-                        }
+                        onChange={handleMatchChange}
                       />
                     </div>
-
                     {/* Hora */}
                     <div className="space-y-2">
                       <Label>Hora</Label>
@@ -410,28 +447,19 @@ useEffect(() => {
                         name="hora"
                         type="time"
                         value={partidoData.fecha_hora.split('T')[1] || ''}
-                        onChange={(e) =>
-                          setPartidoData((prev) => ({
-                            ...prev,
-                            fecha_hora: `${prev.fecha_hora.split('T')[0] || '1970-01-01'}T${e.target.value}`,
-                          }))
-                        }
+                        onChange={handleMatchChange}
                       />
                     </div>
-
                     {/* Resultado */}
                     <div className="space-y-2">
                       <Label>Resultado</Label>
                       <Input
                         name="resultado"
                         value={partidoData.resultado}
-                        onChange={(e) =>
-                          setPartidoData((prev) => ({ ...prev, resultado: e.target.value }))
-                        }
+                        onChange={handleMatchChange}
                         placeholder="Ej: 6-4, 7-5"
                       />
                     </div>
-
                     {/* Buscador de Jugadores para Equipo 1 */}
                     <div className="space-y-2 col-span-2">
                       <Label>Jugadores Equipo 1</Label>
@@ -451,29 +479,16 @@ useEffect(() => {
                             <div key={usuario.id} className="flex items-center gap-2 p-2">
                               <input
                                 type="checkbox"
+                                name="equipo_1"
                                 value={usuario.id}
                                 checked={usuario.id ? partidoData.equipo_1.includes(usuario.id) : false}
-
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setPartidoData((prev) => ({
-                                      ...prev,
-                                      equipo_1: [...prev.equipo_1, e.target.value],
-                                    }));
-                                  } else {
-                                    setPartidoData((prev) => ({
-                                      ...prev,
-                                      equipo_1: prev.equipo_1.filter((id) => id !== e.target.value),
-                                    }));
-                                  }
-                                }}
+                                onChange={handleMatchChange}
                               />
                               <span>{usuario.nombre_completo}</span>
                             </div>
                           ))}
                       </div>
                     </div>
-
                     {/* Buscador de Jugadores para Equipo 2 */}
                     <div className="space-y-2 col-span-2">
                       <Label>Jugadores Equipo 2</Label>
@@ -493,21 +508,10 @@ useEffect(() => {
                             <div key={usuario.id} className="flex items-center gap-2 p-2">
                               <input
                                 type="checkbox"
+                                name="equipo_2"
                                 value={usuario.id}
                                 checked={usuario.id ? partidoData.equipo_2.includes(usuario.id) : false}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setPartidoData((prev) => ({
-                                      ...prev,
-                                      equipo_2: [...prev.equipo_2, e.target.value],
-                                    }));
-                                  } else {
-                                    setPartidoData((prev) => ({
-                                      ...prev,
-                                      equipo_2: prev.equipo_2.filter((id) => id !== e.target.value),
-                                    }));
-                                  }
-                                }}
+                                onChange={handleMatchChange}
                               />
                               <span>{usuario.nombre_completo}</span>
                             </div>
@@ -515,14 +519,14 @@ useEffect(() => {
                       </div>
                     </div>
                   </div>
-
                   {/* Botón para Registrar el Partido */}
                   <Button className="w-full" onClick={handleRegisterMatch}>
                     Registrar Partido
                   </Button>
                 </TabsContent>
+                {/* ===================== Torneo ===================== */}
                 <TabsContent value="tournament" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Nombre del Torneo</Label>
                       <Input
@@ -564,7 +568,7 @@ useEffect(() => {
                       <Input
                         name="premio_dinero"
                         type="number"
-                        value={torneoData.premio_dinero}
+                        value={String(torneoData.premio_dinero)}
                         onChange={handleTorneoChange}
                         placeholder="Ej: 500000"
                       />
@@ -575,8 +579,8 @@ useEffect(() => {
                       <Input
                         name="puntos"
                         type="number"
-                        value={torneoData.puntos}
-                        onChange={(e) => setTorneoData({ ...torneoData, puntos: e.target.value })}
+                        value={String(torneoData.puntos)}
+                        onChange={handleTorneoChange}
                         placeholder="Ej: 250"
                       />
                     </div>
@@ -587,26 +591,26 @@ useEffect(() => {
                         name="imagen_url"
                         type="url"
                         value={torneoData.imagen_url}
-                        onChange={(e) => setTorneoData({ ...torneoData, imagen_url: e.target.value })}
+                        onChange={handleTorneoChange}
                         placeholder="Ej: https://example.com/imagen.jpg"
                       />
                     </div>
-                  
                   </div>
                   <Button className="w-full" onClick={handleRegisterTorneo}>
                     Registrar Torneo
                   </Button>
                 </TabsContent>
+                {/* ===================== Jugador ===================== */}
                 <TabsContent value="player" className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Nombre Completo</Label>
-                       <Input
-                          name="nombre_completo"
-                          value={playerData.nombre_completo}
-                          onChange={handleChange}
-                          placeholder="Ej: Carlos Ramírez"
-                        />
+                      <Input
+                        name="nombre_completo"
+                        value={playerData.nombre_completo}
+                        onChange={handleChange}
+                        placeholder="Ej: Carlos Ramírez"
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Email</Label>
@@ -623,7 +627,7 @@ useEffect(() => {
                       <Input
                         name="rating_inicial"
                         type="number"
-                        value={playerData.rating_inicial}
+                        value={String(playerData.rating_inicial)}
                         onChange={handleChange}
                         placeholder="1000"
                       />
@@ -648,6 +652,7 @@ useEffect(() => {
         </div>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
           <motion.div
@@ -669,7 +674,9 @@ useEffect(() => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Pending Approvals */}
+        {/* ====================================== */}
+        {/* Aprobaciones Pendientes (reales) */}
+        {/* ====================================== */}
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-primary" />
@@ -683,8 +690,8 @@ useEffect(() => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className={`p-4 rounded-lg border ${
-                    approval.status === 'approved' 
-                      ? 'bg-green-50 dark:bg-green-900/10' 
+                    approval.status === 'approved'
+                      ? 'bg-green-50 dark:bg-green-900/10'
                       : approval.status === 'rejected'
                       ? 'bg-red-50 dark:bg-red-900/10'
                       : 'bg-muted/50'
@@ -693,14 +700,26 @@ useEffect(() => {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{approval.title}</h3>
-                        <Badge variant="outline">{approval.type}</Badge>
+                        {/* Título según el tipo de aprobación */}
+                        <h3 className="font-semibold">
+                          {approval.tipo === 'tournament'
+                            ? 'Nuevo Torneo'
+                            : approval.tipo === 'match'
+                            ? 'Nuevo Partido'
+                            : 'Solicitud Desconocida'}
+                        </h3>
+                        <Badge variant="outline">{approval.tipo}</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {approval.description}
+                        {/* Ejemplo: mostrar algún campo de approval.data */}
+                        {approval.tipo === 'tournament' && approval.data?.nombre
+                          ? `Nombre: ${approval.data.nombre}`
+                          : approval.tipo === 'match' && approval.data?.torneo
+                          ? `Torneo ID: ${approval.data.torneo}`
+                          : 'Sin datos'}
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
-                        {approval.timestamp}
+                        {new Date(approval.created_at).toLocaleString()}
                       </p>
                     </div>
                     {approval.status === 'pending' ? (
@@ -709,7 +728,7 @@ useEffect(() => {
                           size="sm"
                           variant="ghost"
                           className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                          onClick={() => handleApproval(approval.id, true)}
+                          onClick={() => handleAprobacionDecision(approval.id, true)}
                         >
                           <CheckCircle2 className="h-5 w-5" />
                         </Button>
@@ -717,13 +736,19 @@ useEffect(() => {
                           size="sm"
                           variant="ghost"
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleApproval(approval.id, false)}
+                          onClick={() => handleAprobacionDecision(approval.id, false)}
                         >
                           <XCircle className="h-5 w-5" />
                         </Button>
                       </div>
                     ) : (
-                      <Badge variant={approval.status === 'approved' ? 'success' : 'destructive'}>
+                      <Badge
+                        variant={
+                          approval.status === 'approved'
+                            ? 'success'
+                            : 'destructive'
+                        }
+                      >
                         {approval.status === 'approved' ? 'Aprobado' : 'Rechazado'}
                       </Badge>
                     )}
@@ -734,7 +759,9 @@ useEffect(() => {
           </ScrollArea>
         </Card>
 
-        {/* Recent Activity */}
+        {/* =========================== */}
+        {/* Actividad Reciente (demo) */}
+        {/* =========================== */}
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">Actividad Reciente</h2>
           <ScrollArea className="h-[400px]">
@@ -776,10 +803,10 @@ useEffect(() => {
                     <TableCell>{activity.type}</TableCell>
                     <TableCell>{activity.description}</TableCell>
                     <TableCell>
-                      <Badge 
+                      <Badge
                         variant={
-                          activity.status === 'Aprobado' 
-                            ? 'success' 
+                          activity.status === 'Aprobado'
+                            ? 'success'
                             : activity.status === 'Pendiente'
                             ? 'warning'
                             : 'destructive'

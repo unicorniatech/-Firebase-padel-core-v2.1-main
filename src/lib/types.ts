@@ -70,3 +70,12 @@ export interface PartidoForm {
     hora: string;
     resultado?: string;
   }
+  // src/lib/types.ts
+
+export interface Aprobacion {
+  id: number;
+  tipo: 'tournament' | 'match';
+  status: 'pending' | 'approved' | 'rejected';
+  data: Record<string, any>;  // Aquí viene la info para crear Torneo o Partido
+  created_at: string;         // Fecha de creación
+}
