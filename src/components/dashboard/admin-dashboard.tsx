@@ -290,30 +290,30 @@ export function AdminDashboard() {
       const [fecha, hora] = partidoData.fecha_hora.split('T');
     
       // 2) Construye un objeto que coincida con el serializer del backend
-      const partidoParaEnviar = {
-        // ID del torneo:
-        torneo: partidoData.torneo,
-        // Lista de usuarios en equipo 1 (IDs):
-        equipo_1_ids: partidoData.equipo_1,
-        // Lista de usuarios en equipo 2 (IDs):
+      const matchDataJson = {
+        torneo: partidoData.torneo,          // El ID del torneo
+        equipo_1_ids: partidoData.equipo_1,  // array de IDs de usuarios
         equipo_2_ids: partidoData.equipo_2,
-        // Campos separados:
-        fecha,
-        hora,
-        // Resultado (opcional)
+        fecha,                               // "2025-02-15" p.ej
+        hora,                                // "09:00"
         resultado: partidoData.resultado,
       };
   
-      const response = await createPartido(partidoParaEnviar);
-      console.log('Partido registrado:', response);
-  
-      toast({
-        title: 'Partido registrado con éxito',
-        description: 'El partido ha sido agregado correctamente.',
+      // 3) Llamar a createAprobacion (tipo: 'match')
+      // En lugar de createPartido
+      await createAprobacion({
+        tipo: 'match',
+        data: matchDataJson,
       });
   
+      toast({
+        title: 'Solicitud de Partido enviada',
+        description: 'El partido requiere aprobación antes de crearse.',
+      });
+  
+  
       // Actualiza la lista de partidos
-      setPartidos((prev) => [...prev, response]);
+      //setPartidos((prev) => [...prev, response]);
   
       // Limpia el formulario
       setPartidoData({
