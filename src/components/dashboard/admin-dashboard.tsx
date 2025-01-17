@@ -83,7 +83,53 @@ export function AdminDashboard() {
     };
     loadAprobaciones();
   }, []);
+  /* 
+      useEffect para Websocket
+      Esto permitirá que, si otro admin crea o aprueba/rechaza,
+      ú lo veas en vivo SIN refrescar.
+      También te llegará el mensaje si tú mismo creas algo, 
+      pero a veces conviene confiar en la inserción local. 
+  */
+  useEffect(() => {
+    // Abrimos el websocket
+    const socket = new WebSocket('ws://127.0.0.1:8000/ws/aprobaciones/');
+    // ^ Ajusta la URL a producción (wss://...) si corresponde
 
+    socket.onopen = () => {
+      console.log('WebSocket conectado a /ws/aprobaciones/');
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data) as Aprobacion;
+      console.log('Mensaje WS aprobaciones:', data);
+
+      // Lógica para insertar o quitar de la lista:
+      if (data.status === 'pending') {
+        // Inserta en pendingApprovals si no existe
+        setPendingApprovals((prev) => {
+          const exists = prev.find((ap) => ap.id === data.id);
+          if (!exists) return [data, ...prev];
+          // Si existe, actualizamos:
+          return prev.map((ap) => (ap.id === data.id ? data : ap));
+        });
+      } else {
+        // 'approved' o 'rejected': lo quitamos de la lista
+        setPendingApprovals((prev) => prev.filter((ap) => ap.id !== data.id));
+      }
+    };
+
+    socket.onclose = (e) => {
+      console.log('WebSocket de aprobaciones cerrado:', e);
+    };
+
+    socket.onerror = (err) => {
+      console.error('Error WS aprobaciones:', err);
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, []);
   /**
    * Maneja la decisión de aprobación/rechazo de una solicitud.
    * Renombrado a 'handleAprobacionDecision' para evitar conflictos con otro handleApproval.
@@ -263,6 +309,12 @@ export function AdminDashboard() {
         title: 'Solicitud de Torneo enviada',
         description: 'El torneo requiere aprobación antes de crearse.',
       });
+
+      // RE-FETCH para ver que aparezca inmediatamente en la lista
+      const data = await fetchAprobaciones();
+      const pendientes = data.filter((item) => item.status === 'pending');
+      setPendingApprovals(pendientes);
+
       // Limpia el formulario
       setTorneoData({
         nombre: '',
@@ -310,6 +362,11 @@ export function AdminDashboard() {
         title: 'Solicitud de Partido enviada',
         description: 'El partido requiere aprobación antes de crearse.',
       });
+      
+      // RE-FETCH para verlo en "Pendientes" 
+      const data = await fetchAprobaciones();
+      const pendientes = data.filter((item) => item.status === 'pending');
+      setPendingApprovals(pendientes);
   
   
       // Actualiza la lista de partidos
